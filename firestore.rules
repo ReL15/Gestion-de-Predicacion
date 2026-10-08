@@ -1,0 +1,208 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Funciones Auxiliares Globales y Verificaciones de Identidad
+    // -------------------------------------------------------------------------
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Usuario bootstrap / superadministrador para configuración inicial
+    function isBootstrapAdmin() {
+      return isSignedIn() && request.auth.token.email == 'tch.rivlue15@gmail.com';
+    }
+
+    // Perfil del usuario autenticado
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function myCongregationId() {
+      return getUserData().congregationId;
+    }
+
+    function myRole() {
+      return getUserData().role;
+    }
+
+    function isCoordinator() {
+      return isBootstrapAdmin() || (userExists() && myRole() == 'COORDINADOR');
+    }
+
+    function isServiceOverseer() {
+      return isCoordinator() || (userExists() && (myRole() == 'SUPERINTENDENTE_DE_SERVICIO' || myRole() == 'ASISTENTE_SUPERINTENDENTE_SERVICIO'));
+    }
+
+    function belongsToSameCongregation(congId) {
+      return isBootstrapAdmin() || (userExists() && myCongregationId() == congId);
+    }
+
+    // -------------------------------------------------------------------------
+    // Colección: Congregaciones (/congregations/{congregationId})
+    // -------------------------------------------------------------------------
+    match /congregations/{congregationId} {
+      allow get: if isSignedIn() && isValidId(congregationId) && (isBootstrapAdmin() || belongsToSameCongregation(congregationId));
+      allow list: if isSignedIn();
+
+      allow create: if isSignedIn() && isValidId(congregationId) && (
+        isBootstrapAdmin() ||
+        (incoming().id == congregationId && incoming().name is string && incoming().name.size() <= 120)
+      );
+
+      allow update: if isSignedIn() && isValidId(congregationId) && isCoordinator() && belongsToSameCongregation(congregationId) &&
+        incoming().id == existing().id;
+
+      allow delete: if false; // No se permite eliminación física de congregación
+    }
+
+    // -------------------------------------------------------------------------
+    // Colección: Usuarios / Publicadores (/users/{userId})
+    // -------------------------------------------------------------------------
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (
+        request.auth.uid == userId ||
+        isBootstrapAdmin() ||
+        belongsToSameCongregation(existing().congregationId)
+      );
+
+      allow list: if isSignedIn();
+
+      // Creación permitida para auto-registro inicial o por coordinador
+      allow create: if isSignedIn() && isValidId(userId) && (
+        isBootstrapAdmin() ||
+        isCoordinator() ||
+        (request.auth.uid == userId && incoming().active == true)
+      );
+
+      // Actualización: Coordinador puede actualizar todo; el propio usuario solo datos no críticos
+      allow update: if isSignedIn() && isValidId(userId) && (
+        isBootstrapAdmin() ||
+        (isCoordinator() && belongsToSameCongregation(existing().congregationId)) ||
+        (
+          request.auth.uid == userId &&
+          incoming().role == existing().role &&
+          incoming().canLeadPreaching == existing().canLeadPreaching &&
+          incoming().canPublicPreaching == existing().canPublicPreaching &&
+          incoming().congregationId == existing().congregationId
+        )
+      );
+
+      allow delete: if false; // Solo baja lógica active = false
+    }
+
+    // -------------------------------------------------------------------------
+    // Colección: Lugares de Salida (/preachingPlaces/{placeId})
+    // -------------------------------------------------------------------------
+    match /preachingPlaces/{placeId} {
+      allow get: if isSignedIn() && isValidId(placeId) && belongsToSameCongregation(existing().congregationId);
+      allow list: if isSignedIn();
+
+      allow create: if isSignedIn() && isValidId(placeId) && isServiceOverseer() && belongsToSameCongregation(incoming().congregationId);
+      allow update: if isSignedIn() && isValidId(placeId) && isServiceOverseer() && belongsToSameCongregation(existing().congregationId) &&
+        incoming().congregationId == existing().congregationId;
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Colección: Territorios (/territories/{territoryId})
+    // -------------------------------------------------------------------------
+    match /territories/{territoryId} {
+      allow get: if isSignedIn() && isValidId(territoryId) && belongsToSameCongregation(existing().congregationId);
+      allow list: if isSignedIn();
+
+      allow create: if isSignedIn() && isValidId(territoryId) && isServiceOverseer() && belongsToSameCongregation(incoming().congregationId);
+      allow update: if isSignedIn() && isValidId(territoryId) && isServiceOverseer() && belongsToSameCongregation(existing().congregationId) &&
+        incoming().congregationId == existing().congregationId;
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Colección: Asignaciones Semanales (/weeklyAssignments/{assignmentId})
+    // -------------------------------------------------------------------------
+    match /weeklyAssignments/{assignmentId} {
+      allow get: if isSignedIn() && isValidId(assignmentId) && belongsToSameCongregation(existing().congregationId);
+      allow list: if isSignedIn();
+
+      allow create: if isSignedIn() && isValidId(assignmentId) && isServiceOverseer() && belongsToSameCongregation(incoming().congregationId);
+      allow update: if isSignedIn() && isValidId(assignmentId) && isServiceOverseer() && belongsToSameCongregation(existing().congregationId) &&
+        incoming().congregationId == existing().congregationId;
+      allow delete: if isSignedIn() && isValidId(assignmentId) && isServiceOverseer() && belongsToSameCongregation(existing().congregationId);
+    }
+
+    // -------------------------------------------------------------------------
+    // Colección: Lugares de Predicación Pública (/publicPreachingPlaces/{placeId})
+    // -------------------------------------------------------------------------
+    match /publicPreachingPlaces/{placeId} {
+      allow get: if isSignedIn() && isValidId(placeId) && belongsToSameCongregation(existing().congregationId);
+      allow list: if isSignedIn();
+
+      allow create: if isSignedIn() && isValidId(placeId) && isServiceOverseer() && belongsToSameCongregation(incoming().congregationId);
+      allow update: if isSignedIn() && isValidId(placeId) && isServiceOverseer() && belongsToSameCongregation(existing().congregationId) &&
+        incoming().congregationId == existing().congregationId;
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Colección: Asignaciones Predicación Pública (/publicPreachingAssignments/{assignmentId})
+    // -------------------------------------------------------------------------
+    match /publicPreachingAssignments/{assignmentId} {
+      allow get: if isSignedIn() && isValidId(assignmentId) && belongsToSameCongregation(existing().congregationId);
+      allow list: if isSignedIn();
+
+      allow create: if isSignedIn() && isValidId(assignmentId) && isServiceOverseer() && belongsToSameCongregation(incoming().congregationId) &&
+        incoming().participants.size() >= 1 && incoming().participants.size() <= 3;
+      allow update: if isSignedIn() && isValidId(assignmentId) && isServiceOverseer() && belongsToSameCongregation(existing().congregationId) &&
+        incoming().congregationId == existing().congregationId &&
+        incoming().participants.size() >= 1 && incoming().participants.size() <= 3;
+      allow delete: if isSignedIn() && isValidId(assignmentId) && isServiceOverseer() && belongsToSameCongregation(existing().congregationId);
+    }
+
+    // -------------------------------------------------------------------------
+    // Colección: Preferencias de Notificaciones (/notificationPreferences/{userId})
+    // -------------------------------------------------------------------------
+    match /notificationPreferences/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isCoordinator());
+      allow list: if isSignedIn() && isCoordinator();
+
+      allow create, update: if isSignedIn() && isValidId(userId) && (
+        request.auth.uid == userId || isCoordinator()
+      );
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Colección: Registros de Auditoría (/auditLogs/{logId})
+    // -------------------------------------------------------------------------
+    match /auditLogs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId) && isCoordinator() && belongsToSameCongregation(existing().congregationId);
+      allow list: if isSignedIn() && isCoordinator();
+
+      allow create: if isSignedIn() && isValidId(logId) && belongsToSameCongregation(incoming().congregationId);
+      allow update, delete: if false; // Inmutable
+    }
+  }
+}

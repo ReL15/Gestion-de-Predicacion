@@ -1,0 +1,203 @@
+{
+  "entities": {
+    "Congregation": {
+      "title": "Congregation",
+      "description": "Congregación a la que pertenecen los publicadores y territorios",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 120 },
+        "circuit": { "type": "string", "maxLength": 50 },
+        "timezone": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["id", "name", "timezone", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil del publicador con sus roles y privilegios",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "congregationId": { "type": "string" },
+        "firstName": { "type": "string", "maxLength": 80 },
+        "lastName": { "type": "string", "maxLength": 80 },
+        "fullName": { "type": "string", "maxLength": 160 },
+        "email": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "enum": ["COORDINADOR", "SUPERINTENDENTE_DE_SERVICIO", "ASISTENTE_SUPERINTENDENTE_SERVICIO", "PUBLICADOR"] },
+        "canLeadPreaching": { "type": "boolean" },
+        "canPublicPreaching": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "congregationId", "firstName", "lastName", "fullName", "email", "role", "active"]
+    },
+    "PreachingPlace": {
+      "title": "PreachingPlace",
+      "description": "Lugares de salida para la predicación",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "congregationId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 120 },
+        "address": { "type": "string", "maxLength": 200 },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "description": { "type": "string", "maxLength": 300 },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "congregationId", "name", "active", "createdAt"]
+    },
+    "Territory": {
+      "title": "Territory",
+      "description": "Territorio con polígono de coordenadas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "congregationId": { "type": "string" },
+        "number": { "type": "string", "maxLength": 20 },
+        "name": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 300 },
+        "status": { "type": "string", "enum": ["DISPONIBLE", "ASIGNADO", "EN_PROCESO", "COMPLETADO", "INACTIVO"] },
+        "polygon": { "type": "array" },
+        "active": { "type": "boolean" },
+        "observations": { "type": "string", "maxLength": 500 },
+        "lastAssignedDate": { "type": "string" },
+        "lastAssignedTo": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "congregationId", "number", "status", "active", "createdAt"]
+    },
+    "WeeklyAssignment": {
+      "title": "WeeklyAssignment",
+      "description": "Asignación del programa semanal de predicación",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "congregationId": { "type": "string" },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 10 },
+        "placeId": { "type": "string" },
+        "placeName": { "type": "string" },
+        "leaderId": { "type": "string" },
+        "leaderName": { "type": "string" },
+        "territoryId": { "type": "string" },
+        "territoryNumber": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 300 },
+        "hasConflict": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["id", "congregationId", "date", "time", "placeId", "leaderId", "territoryId", "createdAt"]
+    },
+    "PublicPreachingPlace": {
+      "title": "PublicPreachingPlace",
+      "description": "Lugar de predicación pública con carritos / exhibidores",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "congregationId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 120 },
+        "address": { "type": "string", "maxLength": 200 },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "day": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 10 },
+        "duration": { "type": "string", "maxLength": 20 },
+        "description": { "type": "string", "maxLength": 300 },
+        "active": { "type": "boolean" },
+        "fixedMemberIds": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "congregationId", "name", "latitude", "longitude", "active", "createdAt"]
+    },
+    "PublicPreachingAssignment": {
+      "title": "PublicPreachingAssignment",
+      "description": "Asignación temporal de predicación pública (2 o 3 publicadores)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "congregationId": { "type": "string" },
+        "placeId": { "type": "string" },
+        "placeName": { "type": "string" },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 10 },
+        "participants": { "type": "array" },
+        "notes": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "congregationId", "placeId", "date", "time", "participants", "createdAt"]
+    },
+    "NotificationPreference": {
+      "title": "NotificationPreference",
+      "description": "Preferencias de recordatorios del usuario",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "congregationId": { "type": "string" },
+        "remind7DaysBefore": { "type": "boolean" },
+        "remind2DaysBefore": { "type": "boolean" },
+        "remindSameDay7AM": { "type": "boolean" },
+        "fcmToken": { "type": "string", "maxLength": 256 }
+      },
+      "required": ["userId", "congregationId", "remind7DaysBefore", "remind2DaysBefore", "remindSameDay7AM"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Registro de auditoría de acciones administrativas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "congregationId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string", "maxLength": 120 },
+        "action": { "type": "string", "maxLength": 80 },
+        "targetEntity": { "type": "string", "maxLength": 50 },
+        "targetId": { "type": "string", "maxLength": 80 },
+        "details": { "type": "string", "maxLength": 500 },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "congregationId", "userId", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/congregations/{congregationId}": {
+      "schema": { "$ref": "#/entities/Congregation" },
+      "description": "Documentos de congregaciones registradas"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Perfiles de usuarios y roles"
+    },
+    "/preachingPlaces/{placeId}": {
+      "schema": { "$ref": "#/entities/PreachingPlace" },
+      "description": "Lugares de salida para la predicación congregacional"
+    },
+    "/territories/{territoryId}": {
+      "schema": { "$ref": "#/entities/Territory" },
+      "description": "Territorios y polígonos de límites"
+    },
+    "/weeklyAssignments/{assignmentId}": {
+      "schema": { "$ref": "#/entities/WeeklyAssignment" },
+      "description": "Asignaciones del programa semanal de predicación"
+    },
+    "/publicPreachingPlaces/{placeId}": {
+      "schema": { "$ref": "#/entities/PublicPreachingPlace" },
+      "description": "Puntos de exhibidores de predicación pública"
+    },
+    "/publicPreachingAssignments/{assignmentId}": {
+      "schema": { "$ref": "#/entities/PublicPreachingAssignment" },
+      "description": "Asignaciones para exhibidores públicos con 2-3 publicadores"
+    },
+    "/notificationPreferences/{userId}": {
+      "schema": { "$ref": "#/entities/NotificationPreference" },
+      "description": "Preferencias de notificación de cada hermano"
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Historial de auditoría para cambios críticos"
+    }
+  }
+}

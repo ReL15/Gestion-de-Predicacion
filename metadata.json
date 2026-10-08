@@ -1,0 +1,10 @@
+{
+  "name": "Organizador de Predicación",
+  "description": "Sistema de gestión y organización interna de la predicación congregacional, asignaciones, territorios y predicación pública.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
